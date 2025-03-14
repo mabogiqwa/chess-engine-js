@@ -35,6 +35,5 @@ Improve AI with Minimax or Alpha-Beta pruning.
 Enhance UI with better visuals and animations.
 
 Author
-
-Created as a simple chess game with AI for learning and experimentation.
+Mabo Giqwa
 
