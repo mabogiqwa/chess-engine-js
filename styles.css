@@ -1,0 +1,63 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background-color: #f0f0f0;
+}
+
+#status {
+    padding: 10px;
+    text-align: center;
+    background-color: #e0e0e0;
+    width: 100%;
+}
+
+#chessboard {
+    flex-grow: 1;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%;
+    height: calc(100% - 50px); /* Subtract status bar height */
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+}
+
+.square {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 5vmin; /* Responsive font size */
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.white { background-color: #f0d9b5; }
+.black { background-color: #b58863; }
+
+.selected { 
+    border: 2px solid green;
+    box-sizing: border-box;
+}
+
+.possible-move { background-color: rgba(0, 255, 0, 0.3); }
+.capture-move { background-color: rgba(255, 0, 0, 0.3); }
+
+/* Responsive adjustments */
+@media screen and (max-width: 600px) {
+    .square {
+        font-size: 4vmin;
+    }
+}
