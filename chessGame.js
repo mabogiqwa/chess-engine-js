@@ -4,11 +4,22 @@ class ChessGame {
         this.currentPlayer = 'white';
         this.selectedPiece = null;
         this.moveHistory = [];
+        this.positionHistory = []; // New array to track position signatures
         this.ai = new SimpleChessAI();
+
+        // Initial board signature
+        this.positionHistory.push(this.getPositionSignature());
 
         if (!board) {
             this.renderBoard();
         }
+    }
+
+    getPositionSignature() {
+        return {
+            board: this.board.map(row => [...row]), // Deep copy of the board
+            currentPlayer: this.currentPlayer
+        };
     }
 
     initializeBoard() {
@@ -170,18 +181,31 @@ class ChessGame {
     }
 
     validateWhitePawnMove(fromRow, fromCol, toRow, toCol) {
-        if (fromCol === toCol && toRow === fromRow - 1 && this.board[toRow][toCol] === ' ') {
+        const direction = -1; // White pawns move up the board
+        const startRow = 6;   // Starting row for white pawns
+    
+        // Standard forward move
+        if (fromCol === toCol && toRow === fromRow + direction && this.board[toRow][toCol] === ' ') {
             return true;
         }
-
-        if (fromCol === toCol && fromRow === 6 && toRow === 4 && this.board[toRow][toCol] === ' ') {
+    
+        // Initial two-square move
+        if (fromRow === startRow && 
+            fromCol === toCol && 
+            toRow === fromRow + (2 * direction) && 
+            this.board[toRow][toCol] === ' ' &&
+            this.board[fromRow + direction][toCol] === ' ') {
             return true;
         }
-
-        if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow - 1) {
-            return this.board[toRow][toCol] !== ' ';
+    
+        // Capture diagonally
+        if (Math.abs(fromCol - toCol) === 1 && 
+            toRow === fromRow + direction && 
+            this.board[toRow][toCol] !== ' ' && 
+            !this.isPieceWhite(this.board[toRow][toCol])) {
+            return true;
         }
-
+    
         return false;
     }
 
@@ -275,17 +299,21 @@ class ChessGame {
     }
 
     movePiece(fromRow, fromCol, toRow, toCol) {
+        // Move the piece
+        this.board[toRow][toCol] = this.board[fromRow][fromCol];
+        this.board[fromRow][fromCol] = ' ';
+
+        // Create move record
         const move = {
-            piece: this.board[fromRow][fromCol],
+            piece: this.board[toRow][toCol],
             from: [fromRow, fromCol],
             to: [toRow, toCol],
             captured: this.board[toRow][toCol]
         };
         this.moveHistory.push(move);
 
-        // Move the piece
-        this.board[toRow][toCol] = this.board[fromRow][fromCol];
-        this.board[fromRow][fromCol] = ' ';
+        // Add current board state to position history
+        this.positionHistory.push(this.getPositionSignature());
 
         // Switch turns
         this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
@@ -293,16 +321,28 @@ class ChessGame {
         // Re-render the board
         this.renderBoard();
 
+        // Check game end conditions
+        const gameEndResult = this.checkGameEnd();
+        if (gameEndResult.gameOver) {
+            this.endGame(gameEndResult);
+            return;
+        }
+
         // AI move
         if (this.currentPlayer === 'black') {
             this.makeAIMove();
         }
     }
 
+    isPieceBlack(piece) {
+        const blackPieces = ['♟', '♜', '♞', '♝', '♛', '♚'];
+        return blackPieces.includes(piece);
+    }
+
     makeAIMove() {
         setTimeout(() => {
             const bestMove = this.ai.findBestMove(this.board);
-
+    
             if (bestMove) {
                 this.movePiece(
                     bestMove.from[0], 
@@ -310,12 +350,39 @@ class ChessGame {
                     bestMove.to[0], 
                     bestMove.to[1]
                 );
+    
+                // Check game end conditions after AI move
+                const gameEndResult = this.checkGameEnd();
+                if (gameEndResult.gameOver) {
+                    this.endGame(gameEndResult);
+                }
             }
         }, 100);
     }
 
     checkGameEnd() {
-        // Check for different game-ending scenarios
+        // First, check if either king is missing
+        const whiteKingExists = this.board.flat().some(piece => piece === '♔');
+        const blackKingExists = this.board.flat().some(piece => piece === '♚');
+
+        // If either king is missing, end the game
+        if (!whiteKingExists) {
+            return {
+                gameOver: true,
+                result: 'Black Wins',
+                reason: 'White King Captured'
+            };
+        }
+
+        if (!blackKingExists) {
+            return {
+                gameOver: true,
+                result: 'White Wins',
+                reason: 'Black King Captured'
+            };
+        }
+
+        // Existing game end checks
         const whiteKingStatus = this.checkKingStatus('white');
         const blackKingStatus = this.checkKingStatus('black');
     
@@ -353,6 +420,7 @@ class ChessGame {
             };
         }
     
+        // Other existing draw conditions
         if (this.isInsufficientMaterial()) {
             return {
                 gameOver: true,
@@ -531,14 +599,36 @@ class ChessGame {
     }
 
     isThreefoldRepetition() {
-        const positionHistory = this.moveHistory.map(move => JSON.stringify(this.board));
-        
-        const positionCounts = {};
-        positionHistory.forEach(position => {
-            positionCounts[position] = (positionCounts[position] || 0) + 1;
-        });
-        
-        return Object.values(positionCounts).some(count => count >= 3);
+        // If not enough moves, can't have threefold repetition
+        if (this.positionHistory.length < 3) return false;
+
+        // Get the current board state
+        const currentSignature = this.getPositionSignature();
+
+        // Count how many times this exact board state has occurred
+        const positionCount = this.positionHistory.filter(prevSignature => 
+            this.areBoardStatesEqual(prevSignature.board, currentSignature.board) &&
+            prevSignature.currentPlayer === currentSignature.currentPlayer
+        ).length;
+
+        // Debug logging
+        console.log('Position History Length:', this.positionHistory.length);
+        console.log('Position Count:', positionCount);
+
+        // Return true if the current board state has occurred 3 times
+        return positionCount >= 3;
+    }
+
+    areBoardStatesEqual(board1, board2) {
+        // Deep comparison of two board states
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                if (board1[row][col] !== board2[row][col]) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
     
     isFiftyMoveRule() {
@@ -549,6 +639,21 @@ class ChessGame {
             move.captured === ' '
         );
     }   
+
+    endGame(result) {
+        const statusElement = document.getElementById('status');
+        statusElement.textContent = `Game Over: ${result.result} (${result.reason})`;
+        
+        // Remove click event listeners to prevent further moves
+        document.querySelectorAll('.square').forEach(square => {
+            square.removeEventListener('click', this.handleSquareClick);
+        });
+
+        // Optional: Add a visual indication of the game end
+        document.getElementById('chessboard').classList.add('game-over');
+    }
+
+
 }
 
 const game = new ChessGame();
