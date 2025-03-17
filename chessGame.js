@@ -5,7 +5,7 @@ class ChessGame {
         this.selectedPiece = null;
         this.moveHistory = [];
         this.positionHistory = []; // New array to track position signatures
-        this.ai = new SimpleChessAI();
+        this.ai = new OptimizedMinimaxChessAI();
 
         // Initial board signature
         this.positionHistory.push(this.getPositionSignature());
