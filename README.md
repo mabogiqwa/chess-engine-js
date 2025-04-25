@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a simple chess game implemented in JavaScript, featuring a graphical interface and an AI opponent that uses a greedy best-first search algorithm. The game allows a human player to play as white against an AI-controlled black player.
+This project is a simple chess game implemented in JavaScript, featuring a graphical interface and an AI opponent that uses a minimax optimized search algorithm. The game allows a human player to play as white against an AI-controlled black player.
 
 ## Features
 
